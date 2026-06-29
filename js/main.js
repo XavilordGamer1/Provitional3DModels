@@ -28,11 +28,9 @@ controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI / 2 - 0.05; 
 
 // iluminacion
-// 1. luz ambiental base (bajamos un poco para que se note la textura del piso)
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
-// 2. luz principal (sigue a la camara)
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.castShadow = true;
 
@@ -49,28 +47,11 @@ dirLight.shadow.bias = -0.0005;
 dirLight.shadow.radius = 8; 
 scene.add(dirLight);
 
-// cargar textura de alfombra
+// preparamos la textura de alfombra
 const textureLoader = new THREE.TextureLoader();
-// recuerda guardar tu imagen en la carpeta assets
 const carpetTexture = textureLoader.load('assets/carpet.jpg');
-// configuramos para que la textura se repita en mosaico
 carpetTexture.wrapS = THREE.RepeatWrapping;
 carpetTexture.wrapT = THREE.RepeatWrapping;
-// ajusta estos numeros si quieres que el grano de la alfombra se vea mas grande o pequeño
-carpetTexture.repeat.set(40, 40); 
-
-// suelo con textura de alfombra
-const floorGeo = new THREE.PlaneGeometry(100, 100);
-const floorMat = new THREE.MeshStandardMaterial({ 
-    map: carpetTexture,
-    roughness: 1, // la alfombra es totalmente mate
-    metalness: 0,
-    color: '#dddddd' // tinte gris claro base
-});
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
 
 // panel gui 
 const gui = new GUI();
@@ -79,12 +60,11 @@ gui.domElement.style.top = '10px';
 gui.domElement.style.right = '10px';
 container.appendChild(gui.domElement);
 
-// controles gui ajustados
 const envFolder = gui.addFolder('luces');
 envFolder.add(ambientLight, 'intensity', 0, 3, 0.1).name('ambiental');
 envFolder.add(dirLight, 'intensity', 0, 3, 0.1).name('luz camara');
 
-// cargar modelo 
+// cargar modelo y crear el piso a medida
 const loader = new GLTFLoader();
 loader.load('assets/escalera.glb', (gltf) => {
     const model = gltf.scene;
@@ -102,6 +82,31 @@ loader.load('assets/escalera.glb', (gltf) => {
     scene.add(model);
     model.position.set(0, 0, 0); 
     
+    // calculamos las medidas reales del modelo cargado
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    
+    // 10 pies = aprox 3.048 metros. damos margen a todos los lados
+    const margen = 3.048; 
+    const floorWidth = size.x + (margen * 2);
+    const floorDepth = size.z + (margen * 2);
+
+    // ajustamos la repeticion para que la textura no se estire segun el nuevo tamaño
+    carpetTexture.repeat.set(floorWidth / 2, floorDepth / 2);
+
+    // creamos el suelo exacto
+    const floorGeo = new THREE.PlaneGeometry(floorWidth, floorDepth);
+    const floorMat = new THREE.MeshStandardMaterial({ 
+        map: carpetTexture,
+        roughness: 1, 
+        metalness: 0,
+        color: '#dddddd'
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+    
 }, undefined, (err) => console.error('error gltf:', err));
 
 // render loop
@@ -109,7 +114,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update(); 
     
-    // la luz copia la posicion de la camara en cada frame
+    // la luz copia la posicion de la camara
     dirLight.position.copy(camera.position);
     
     renderer.render(scene, camera);
