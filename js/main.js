@@ -6,7 +6,6 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 // init escena
 const container = document.getElementById('viewer-container');
 const scene = new THREE.Scene();
-// fondo gris claro igual a la imagen
 scene.background = new THREE.Color('#ebebeb');
 scene.fog = new THREE.FogExp2('#ebebeb', 0.015);
 
@@ -19,31 +18,25 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // sombras ultra suaves
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 container.appendChild(renderer.domElement);
 
 // controles
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 controls.dampingFactor = 0.05;
-controls.maxPolarAngle = Math.PI / 2 - 0.05; // no pasar del suelo
+controls.maxPolarAngle = Math.PI / 2 - 0.05; 
 
-// iluminacion sin sombras duras
-// 1. luz ambiental muy fuerte para lavar contrastes
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+// iluminacion
+// 1. luz ambiental base
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
 scene.add(ambientLight);
 
-// 2. luz hemisferio suave para dar un poco de volumen natural
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
-hemiLight.position.set(0, 20, 0);
-scene.add(hemiLight);
-
-// 3. luz direccional cenital (desde arriba) SOLO para generar la sombra de contacto
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.3); // intensidad muy baja
-dirLight.position.set(0, 10, 0); // justo encima
+// 2. luz principal (esta es la que seguirá a la cámara)
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.castShadow = true;
 
-// config sombra muy difuminada
+// config sombra suave
 dirLight.shadow.camera.top = 10;
 dirLight.shadow.camera.bottom = -10;
 dirLight.shadow.camera.left = -10;
@@ -53,20 +46,20 @@ dirLight.shadow.camera.far = 40;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
 dirLight.shadow.bias = -0.0005;
-dirLight.shadow.radius = 8; // radio alto = bordes muy difusos
+dirLight.shadow.radius = 8; 
 scene.add(dirLight);
 
-// suelo invisible que solo recibe sombras (efecto estudio infinito)
+// suelo invisible para atrapar la sombra
 const floorGeo = new THREE.PlaneGeometry(100, 100);
 const floorMat = new THREE.ShadowMaterial({ 
-    opacity: 0.08 // sombra casi transparente, ajusta esto si la quieres mas oscura
+    opacity: 0.1 
 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// panel gui interactivo
+// panel gui 
 const gui = new GUI();
 gui.domElement.style.position = 'absolute';
 gui.domElement.style.top = '10px';
@@ -74,15 +67,15 @@ gui.domElement.style.right = '10px';
 container.appendChild(gui.domElement);
 
 // controles gui ajustados
-const envFolder = gui.addFolder('iluminacion general');
+const envFolder = gui.addFolder('luces');
 envFolder.add(ambientLight, 'intensity', 0, 3, 0.1).name('ambiental');
-envFolder.add(hemiLight, 'intensity', 0, 2, 0.1).name('hemisferio');
+envFolder.add(dirLight, 'intensity', 0, 3, 0.1).name('luz camara');
 
 const shadowFolder = gui.addFolder('sombra de contacto');
 shadowFolder.add(floorMat, 'opacity', 0, 0.5, 0.01).name('oscuridad sombra');
 shadowFolder.add(dirLight.shadow, 'radius', 1, 20, 1).name('difuminado');
 
-// cargar modelo gltf
+// cargar modelo 
 const loader = new GLTFLoader();
 loader.load('assets/escalera.glb', (gltf) => {
     const model = gltf.scene;
@@ -92,14 +85,13 @@ loader.load('assets/escalera.glb', (gltf) => {
             child.castShadow = true;
             child.receiveShadow = true;
             if (child.material) {
-                // mantener la madera sin brillos falsos
                 child.material.roughness = Math.max(child.material.roughness, 0.7);
             }
         }
     });
 
     scene.add(model);
-    model.position.set(0, 0, 0); // origen limpio
+    model.position.set(0, 0, 0); 
     
 }, undefined, (err) => console.error('error gltf:', err));
 
@@ -107,6 +99,10 @@ loader.load('assets/escalera.glb', (gltf) => {
 function animate() {
     requestAnimationFrame(animate);
     controls.update(); 
+    
+    // magia: la luz copia la posicion de la camara en cada frame
+    dirLight.position.copy(camera.position);
+    
     renderer.render(scene, camera);
 }
 animate();
