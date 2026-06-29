@@ -9,7 +9,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color('#ebebeb');
 scene.fog = new THREE.FogExp2('#ebebeb', 0.015);
 
-// camara (se inicia generica, se auto-ajustara al cargar el modelo)
+// camara
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
 
 // render
@@ -86,20 +86,17 @@ loader.load('assets/escalera.glb', (gltf) => {
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     
-    // ENCUADRE AUTOMATICO
-    // busca la medida mas grande para saber que tan lejos debe ir la camara
+    // encuadre automatico
     const maxDim = Math.max(size.x, size.y, size.z);
     const fov = camera.fov * (Math.PI / 180);
     let cameraDist = Math.abs(maxDim / 2 / Math.tan(fov / 2));
     
-    // multiplicador para darle un margen visual a los bordes
     cameraDist *= 1.3; 
     
-    // coloca la camara en un angulo 3/4 (isometrico)
-    // nota: si la camara queda mirando la parte de atras, cambia "maxDim" por "-maxDim" en el eje X o Z
-    camera.position.set(center.x + maxDim, center.y + (maxDim * 0.6), center.z + cameraDist);
+    // aqui esta la magia: invertimos las coordenadas (menos x, menos z) 
+    // para mover la camara dos esquinas a la derecha (al frente)
+    camera.position.set(center.x - maxDim, center.y + (maxDim * 0.6), center.z - cameraDist);
     
-    // fuerza la camara a mirar exactamente al centro del modelo
     controls.target.copy(center);
     controls.update();
 
@@ -129,7 +126,6 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update(); 
     
-    // la luz copia la posicion de la camara
     dirLight.position.copy(camera.position);
     
     renderer.render(scene, camera);
