@@ -101,17 +101,9 @@ loader.load('assets/escalera.glb', (gltf) => {
 
     scene.add(model);
 
-    // auto centrar basico
-    const box = new THREE.Box3().setFromObject(model);
-    const center = box.getCenter(new THREE.Vector3());
-    
-    model.position.x += (model.position.x - center.x);
-    model.position.z += (model.position.z - center.z);
-    model.position.y -= box.min.y;
-
-    // agregar control al panel para ajuste fino del suelo
-    const modelFolder = gui.addFolder('ajuste del modelo');
-    modelFolder.add(model.position, 'y', -5, 5, 0.01).name('altura (y)');
+    // como el pivote ya esta en la base desde blender
+    // solo lo seteamos en el centro exacto del mundo (x:0, y:0, z:0)
+    model.position.set(0, 0, 0);
     
 }, undefined, (err) => console.error('error gltf:', err));
 
