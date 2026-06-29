@@ -1,18 +1,19 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js'; // importar gui
 
 // init escena
 const container = document.getElementById('viewer-container');
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#ebebeb');
-scene.fog = new THREE.FogExp2('#ebebeb', 0.03); // difuminar el fondo
+scene.fog = new THREE.FogExp2('#ebebeb', 0.03);
 
 // camara
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
 camera.position.set(5, 4, 7);
 
-// render y sombras activas
+// render
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -20,13 +21,13 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 container.appendChild(renderer.domElement);
 
-// controles orbita
+// controles
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 controls.dampingFactor = 0.05;
-controls.maxPolarAngle = Math.PI / 2 - 0.05; // no bajar del piso
+controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-// setup de luces (estudio)
+// luces base
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
@@ -34,11 +35,12 @@ const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
 hemiLight.position.set(0, 20, 0);
 scene.add(hemiLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
-dirLight.position.set(6, 12, 8);
+// luz principal (frente y arriba para detalles)
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(0, 10, 10);
 dirLight.castShadow = true;
 
-// config resolucion de sombras
+// sombras config
 dirLight.shadow.camera.top = 10;
 dirLight.shadow.camera.bottom = -10;
 dirLight.shadow.camera.left = -10;
@@ -50,7 +52,21 @@ dirLight.shadow.mapSize.height = 2048;
 dirLight.shadow.bias = -0.0005;
 scene.add(dirLight);
 
-// base/suelo
+// panel gui interactivo
+const gui = new GUI();
+gui.domElement.style.position = 'absolute';
+gui.domElement.style.top = '10px';
+gui.domElement.style.right = '10px';
+container.appendChild(gui.domElement); // anclar dentro del visor 3d
+
+// controles de luz en el gui
+const lightFolder = gui.addFolder('luz principal');
+lightFolder.add(dirLight.position, 'x', -20, 20, 0.1).name('pos x');
+lightFolder.add(dirLight.position, 'y', 0, 20, 0.1).name('pos y');
+lightFolder.add(dirLight.position, 'z', -20, 20, 0.1).name('pos z');
+lightFolder.add(dirLight, 'intensity', 0, 3, 0.1).name('intensidad');
+
+// suelo
 const floorGeo = new THREE.PlaneGeometry(100, 100);
 const floorMat = new THREE.MeshStandardMaterial({ 
     color: 0xdfdfdf,
@@ -67,7 +83,6 @@ const loader = new GLTFLoader();
 loader.load('assets/escalera.glb', (gltf) => {
     const model = gltf.scene;
 
-    // aplicar sombras a cada mesh
     model.traverse((child) => {
         if (child.isMesh) {
             child.castShadow = true;
@@ -86,8 +101,8 @@ loader.load('assets/escalera.glb', (gltf) => {
     
     model.position.x += (model.position.x - center.x);
     model.position.z += (model.position.z - center.z);
-    model.position.y -= box.min.y; // asentar en y=0
-}, undefined, (err) => console.error('error al cargar gltf:', err));
+    model.position.y -= box.min.y;
+}, undefined, (err) => console.error('error gltf:', err));
 
 // loop
 function animate() {
