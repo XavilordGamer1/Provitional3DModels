@@ -28,11 +28,11 @@ controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI / 2 - 0.05; 
 
 // iluminacion
-// 1. luz ambiental base
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+// 1. luz ambiental base (bajamos un poco para que se note la textura del piso)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
-// 2. luz principal (esta es la que seguirá a la cámara)
+// 2. luz principal (sigue a la camara)
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.castShadow = true;
 
@@ -49,10 +49,23 @@ dirLight.shadow.bias = -0.0005;
 dirLight.shadow.radius = 8; 
 scene.add(dirLight);
 
-// suelo invisible para atrapar la sombra
+// cargar textura de alfombra
+const textureLoader = new THREE.TextureLoader();
+// recuerda guardar tu imagen en la carpeta assets
+const carpetTexture = textureLoader.load('assets/carpet.jpg');
+// configuramos para que la textura se repita en mosaico
+carpetTexture.wrapS = THREE.RepeatWrapping;
+carpetTexture.wrapT = THREE.RepeatWrapping;
+// ajusta estos numeros si quieres que el grano de la alfombra se vea mas grande o pequeño
+carpetTexture.repeat.set(40, 40); 
+
+// suelo con textura de alfombra
 const floorGeo = new THREE.PlaneGeometry(100, 100);
-const floorMat = new THREE.ShadowMaterial({ 
-    opacity: 0.1 
+const floorMat = new THREE.MeshStandardMaterial({ 
+    map: carpetTexture,
+    roughness: 1, // la alfombra es totalmente mate
+    metalness: 0,
+    color: '#dddddd' // tinte gris claro base
 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
@@ -70,10 +83,6 @@ container.appendChild(gui.domElement);
 const envFolder = gui.addFolder('luces');
 envFolder.add(ambientLight, 'intensity', 0, 3, 0.1).name('ambiental');
 envFolder.add(dirLight, 'intensity', 0, 3, 0.1).name('luz camara');
-
-const shadowFolder = gui.addFolder('sombra de contacto');
-shadowFolder.add(floorMat, 'opacity', 0, 0.5, 0.01).name('oscuridad sombra');
-shadowFolder.add(dirLight.shadow, 'radius', 1, 20, 1).name('difuminado');
 
 // cargar modelo 
 const loader = new GLTFLoader();
@@ -100,7 +109,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update(); 
     
-    // magia: la luz copia la posicion de la camara en cada frame
+    // la luz copia la posicion de la camara en cada frame
     dirLight.position.copy(camera.position);
     
     renderer.render(scene, camera);
