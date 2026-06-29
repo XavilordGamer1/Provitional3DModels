@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurador de Escaleras</title>
+    <link rel="stylesheet" href="css/style.css">
+    
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="main-container">
+        <aside class="sidebar">
+            <img src="https://via.placeholder.com/200x500?text=Menu+Opciones" alt="Opciones" style="width: 100%; border-radius: 8px;">
+        </aside>
+
+        <main class="content-area">
+            <div class="viewer-header">
+                <h3>ACTIVE CONFIGURATION: Red Oak U-Shape Staircase with Custom Metal Spindles</h3>
+            </div>
+            
+            <div id="viewer-container" class="viewer-container"></div>
+            
+            <div class="quote-footer">
+                <div class="selection-info">
+                    <strong>YOUR SELECTION:</strong> U-Shape, Red Oak, Metal Spindles & Glass Railing
+                </div>
+                <div class="quote-form">
+                    <input type="email" placeholder="ENTER EMAIL FOR FULL QUOTE">
+                    <button id="request-quote-btn">REQUEST FINAL QUOTE</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
