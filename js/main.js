@@ -11,14 +11,14 @@ scene.fog = new THREE.FogExp2('#ebebeb', 0.02);
 
 // camara
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-camera.position.set(6, 5, 8); // angulo similar al de tu imagen
+camera.position.set(6, 5, 8); 
 
 // render
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // sombras difusas
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 container.appendChild(renderer.domElement);
 
 // controles
@@ -27,22 +27,21 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-// iluminacion estilo estudio (basada en tu referencia)
-// 1. luz ambiental fuerte para lavar las sombras negras
+// luz ambiental
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
-// 2. luz hemisferio (cielo blanco, suelo gris claro) para dar volumen suave
+// luz hemisferio
 const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc0c0c0, 0.4);
 hemiLight.position.set(0, 20, 0);
 scene.add(hemiLight);
 
-// 3. luz principal (cenital y un poco frontal)
+// luz principal
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-dirLight.position.set(2, 12, 5); // cae casi recta para que la sombra quede abajo
+dirLight.position.set(2, 12, 5); 
 dirLight.castShadow = true;
 
-// config sombras para que sean muy suaves
+// config sombras
 dirLight.shadow.camera.top = 10;
 dirLight.shadow.camera.bottom = -10;
 dirLight.shadow.camera.left = -10;
@@ -52,7 +51,6 @@ dirLight.shadow.camera.far = 40;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
 dirLight.shadow.bias = -0.001;
-// difuminar un poco los bordes de la sombra
 dirLight.shadow.radius = 4; 
 scene.add(dirLight);
 
@@ -63,7 +61,7 @@ gui.domElement.style.top = '10px';
 gui.domElement.style.right = '10px';
 container.appendChild(gui.domElement);
 
-// controles en el gui para afinar detalles
+// controles de luces
 const lightFolder = gui.addFolder('luz principal');
 lightFolder.add(dirLight.position, 'x', -20, 20, 0.1).name('pos x');
 lightFolder.add(dirLight.position, 'y', 0, 20, 0.1).name('pos y');
@@ -74,11 +72,11 @@ const envFolder = gui.addFolder('luces de relleno');
 envFolder.add(ambientLight, 'intensity', 0, 2, 0.1).name('ambiental');
 envFolder.add(hemiLight, 'intensity', 0, 2, 0.1).name('hemisferio');
 
-// suelo que se mezcla con el fondo
+// suelo
 const floorGeo = new THREE.PlaneGeometry(100, 100);
 const floorMat = new THREE.MeshStandardMaterial({ 
     color: 0xdfdfdf,
-    roughness: 1, // totalmente mate
+    roughness: 1, 
     metalness: 0
 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -95,7 +93,6 @@ loader.load('assets/escalera.glb', (gltf) => {
         if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
-            // quitar brillos artificiales si el material los trae
             if (child.material) {
                 child.material.roughness = Math.max(child.material.roughness, 0.7);
             }
@@ -104,13 +101,18 @@ loader.load('assets/escalera.glb', (gltf) => {
 
     scene.add(model);
 
-    // auto centrar
+    // auto centrar basico
     const box = new THREE.Box3().setFromObject(model);
     const center = box.getCenter(new THREE.Vector3());
     
     model.position.x += (model.position.x - center.x);
     model.position.z += (model.position.z - center.z);
     model.position.y -= box.min.y;
+
+    // agregar control al panel para ajuste fino del suelo
+    const modelFolder = gui.addFolder('ajuste del modelo');
+    modelFolder.add(model.position, 'y', -5, 5, 0.01).name('altura (y)');
+    
 }, undefined, (err) => console.error('error gltf:', err));
 
 // render loop
