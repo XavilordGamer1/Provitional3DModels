@@ -1,69 +1,95 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; // Importamos el cargador de GLTF
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// 1. Configuración del contenedor y la escena
+// init escena
 const container = document.getElementById('viewer-container');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#ebebeb'); // Gris claro de fondo igual al diseño
+scene.background = new THREE.Color('#ebebeb');
+scene.fog = new THREE.FogExp2('#ebebeb', 0.03); // difuminar el fondo
 
-// 2. Configuración de la cámara
+// camara
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-camera.position.set(4, 4, 6); // Posición inicial elevada para una vista isométrica/perspectiva
+camera.position.set(5, 4, 7);
 
-// 3. Renderizador
+// render y sombras activas
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = true; // Activar sombras si tu modelo las usa
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
 container.appendChild(renderer.domElement);
 
-// 4. Controles de órbita (Mouse/Gesto para rotar 360°)
+// controles orbita
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 controls.dampingFactor = 0.05;
-controls.maxPolarAngle = Math.PI / 2; // Evita que la cámara pase por debajo del suelo
+controls.maxPolarAngle = Math.PI / 2 - 0.05; // no bajar del piso
 
-// 5. Iluminación (Esencial para que el modelo no se vea negro)
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.85); // Luz ambiental suave
+// setup de luces (estudio)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6); // Luz directa para definir volúmenes
-directionalLight.position.set(5, 10, 7);
-scene.add(directionalLight);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.4);
+hemiLight.position.set(0, 20, 0);
+scene.add(hemiLight);
 
-// 6. Carga del Modelo 3D
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+dirLight.position.set(6, 12, 8);
+dirLight.castShadow = true;
+
+// config resolucion de sombras
+dirLight.shadow.camera.top = 10;
+dirLight.shadow.camera.bottom = -10;
+dirLight.shadow.camera.left = -10;
+dirLight.shadow.camera.right = 10;
+dirLight.shadow.camera.near = 0.1;
+dirLight.shadow.camera.far = 40;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+
+// base/suelo
+const floorGeo = new THREE.PlaneGeometry(100, 100);
+const floorMat = new THREE.MeshStandardMaterial({ 
+    color: 0xdfdfdf,
+    roughness: 0.8,
+    metalness: 0.0
+});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// cargar modelo
 const loader = new GLTFLoader();
+loader.load('assets/escalera.glb', (gltf) => {
+    const model = gltf.scene;
 
-// REEMPLAZA 'escalera.glb' por el nombre exacto de tu archivo
-loader.load(
-    'assets/escalera.glb', 
-    (gltf) => {
-        const model = gltf.scene;
-        scene.add(model);
+    // aplicar sombras a cada mesh
+    model.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            if (child.material) {
+                child.material.roughness = Math.max(child.material.roughness, 0.5);
+            }
+        }
+    });
 
-        // Ajuste automático: Centrar el modelo en el visor
-        const box = new THREE.Box3().setFromObject(model);
-        const center = box.getCenter(new THREE.Vector3());
-        
-        model.position.x += (model.position.x - center.x);
-        model.position.z += (model.position.z - center.z);
-        
-        // Si notas que el modelo aparece muy grande o muy chico, puedes escalarlo aquí:
-        // model.scale.set(0.5, 0.5, 0.5); 
+    scene.add(model);
 
-        console.log('¡Modelo 3D cargado con éxito!');
-    },
-    (xhr) => {
-        // Progreso de carga en consola
-        console.log((xhr.loaded / xhr.total * 100) + '% cargado');
-    },
-    (error) => {
-        console.error('Ocurrió un error al cargar el modelo 3D:', error);
-    }
-);
+    // auto centrar
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    
+    model.position.x += (model.position.x - center.x);
+    model.position.z += (model.position.z - center.z);
+    model.position.y -= box.min.y; // asentar en y=0
+}, undefined, (err) => console.error('error al cargar gltf:', err));
 
-// 7. Ciclo de animación continua
+// loop
 function animate() {
     requestAnimationFrame(animate);
     controls.update(); 
@@ -71,7 +97,7 @@ function animate() {
 }
 animate();
 
-// 8. Ajuste responsivo al cambiar el tamaño de la ventana
+// auto resize
 window.addEventListener('resize', () => {
     camera.aspect = container.clientWidth / container.clientHeight;
     camera.updateProjectionMatrix();
