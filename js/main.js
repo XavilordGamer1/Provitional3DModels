@@ -6,8 +6,9 @@ import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 // init escena
 const container = document.getElementById('viewer-container');
 const scene = new THREE.Scene();
+// fondo gris claro igual a la imagen
 scene.background = new THREE.Color('#ebebeb');
-scene.fog = new THREE.FogExp2('#ebebeb', 0.02);
+scene.fog = new THREE.FogExp2('#ebebeb', 0.015);
 
 // camara
 const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
@@ -18,30 +19,31 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(container.clientWidth, container.clientHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // sombras ultra suaves
 container.appendChild(renderer.domElement);
 
 // controles
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; 
 controls.dampingFactor = 0.05;
-controls.maxPolarAngle = Math.PI / 2 - 0.05;
+controls.maxPolarAngle = Math.PI / 2 - 0.05; // no pasar del suelo
 
-// luz ambiental
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+// iluminacion sin sombras duras
+// 1. luz ambiental muy fuerte para lavar contrastes
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
 scene.add(ambientLight);
 
-// luz hemisferio
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0xc0c0c0, 0.4);
+// 2. luz hemisferio suave para dar un poco de volumen natural
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6);
 hemiLight.position.set(0, 20, 0);
 scene.add(hemiLight);
 
-// luz principal
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-dirLight.position.set(2, 12, 5); 
+// 3. luz direccional cenital (desde arriba) SOLO para generar la sombra de contacto
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.3); // intensidad muy baja
+dirLight.position.set(0, 10, 0); // justo encima
 dirLight.castShadow = true;
 
-// config sombras
+// config sombra muy difuminada
 dirLight.shadow.camera.top = 10;
 dirLight.shadow.camera.bottom = -10;
 dirLight.shadow.camera.left = -10;
@@ -50,9 +52,19 @@ dirLight.shadow.camera.near = 0.1;
 dirLight.shadow.camera.far = 40;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
-dirLight.shadow.bias = -0.001;
-dirLight.shadow.radius = 4; 
+dirLight.shadow.bias = -0.0005;
+dirLight.shadow.radius = 8; // radio alto = bordes muy difusos
 scene.add(dirLight);
+
+// suelo invisible que solo recibe sombras (efecto estudio infinito)
+const floorGeo = new THREE.PlaneGeometry(100, 100);
+const floorMat = new THREE.ShadowMaterial({ 
+    opacity: 0.08 // sombra casi transparente, ajusta esto si la quieres mas oscura
+});
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
 
 // panel gui interactivo
 const gui = new GUI();
@@ -61,28 +73,14 @@ gui.domElement.style.top = '10px';
 gui.domElement.style.right = '10px';
 container.appendChild(gui.domElement);
 
-// controles de luces
-const lightFolder = gui.addFolder('luz principal');
-lightFolder.add(dirLight.position, 'x', -20, 20, 0.1).name('pos x');
-lightFolder.add(dirLight.position, 'y', 0, 20, 0.1).name('pos y');
-lightFolder.add(dirLight.position, 'z', -20, 20, 0.1).name('pos z');
-lightFolder.add(dirLight, 'intensity', 0, 3, 0.1).name('intensidad');
-
-const envFolder = gui.addFolder('luces de relleno');
-envFolder.add(ambientLight, 'intensity', 0, 2, 0.1).name('ambiental');
+// controles gui ajustados
+const envFolder = gui.addFolder('iluminacion general');
+envFolder.add(ambientLight, 'intensity', 0, 3, 0.1).name('ambiental');
 envFolder.add(hemiLight, 'intensity', 0, 2, 0.1).name('hemisferio');
 
-// suelo
-const floorGeo = new THREE.PlaneGeometry(100, 100);
-const floorMat = new THREE.MeshStandardMaterial({ 
-    color: 0xdfdfdf,
-    roughness: 1, 
-    metalness: 0
-});
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
+const shadowFolder = gui.addFolder('sombra de contacto');
+shadowFolder.add(floorMat, 'opacity', 0, 0.5, 0.01).name('oscuridad sombra');
+shadowFolder.add(dirLight.shadow, 'radius', 1, 20, 1).name('difuminado');
 
 // cargar modelo gltf
 const loader = new GLTFLoader();
@@ -94,16 +92,14 @@ loader.load('assets/escalera.glb', (gltf) => {
             child.castShadow = true;
             child.receiveShadow = true;
             if (child.material) {
+                // mantener la madera sin brillos falsos
                 child.material.roughness = Math.max(child.material.roughness, 0.7);
             }
         }
     });
 
     scene.add(model);
-
-    // como el pivote ya esta en la base desde blender
-    // solo lo seteamos en el centro exacto del mundo (x:0, y:0, z:0)
-    model.position.set(0, 0, 0);
+    model.position.set(0, 0, 0); // origen limpio
     
 }, undefined, (err) => console.error('error gltf:', err));
 
