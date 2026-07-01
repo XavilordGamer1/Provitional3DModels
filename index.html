@@ -23,8 +23,17 @@
 
         <main class="content-area">
             <div class="viewer-header">
-                <h3>ACTIVE CONFIGURATION: Red Oak U-Shape Staircase with Custom Metal Spindles</h3>
-            </div>
+                <h3>ACTIVE CONFIGURATION: <span id="active-stair-text">Escalera Principal (U-Shape)</span></h3>
+                
+                <div class="provisional-selector">
+                    <label for="stair-selector"><strong>🛠️ Seleccionar Modelo 3D: </strong></label>
+                    <select id="stair-selector">
+                        <option value="assets/escalera.glb">Escalera Principal (U-Shape)</option>
+                        <option value="assets/escalera_recta.glb">Escalera Recta (Ejemplo)</option>
+                        <option value="assets/escalera_l.glb">Escalera en L (Ejemplo)</option>
+                    </select>
+                </div>
+                </div>
             
             <div id="viewer-container" class="viewer-container"></div>
             
